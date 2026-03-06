@@ -42,6 +42,7 @@ if __name__ == "__main__":
     args.baseline,
     sourceData,
     addDVFields=True,
+    addDVSkippers=True,
     useCMS=True,
     mergePolicy="TieredMergePolicy",
     facets=(
@@ -69,6 +70,7 @@ if __name__ == "__main__":
       args.candidate,
       sourceData,
       addDVFields=True,
+      addDVSkippers=True,
       extraNamePart="candidate",
       facets=(
         ("taxonomy:Date", "Date"),

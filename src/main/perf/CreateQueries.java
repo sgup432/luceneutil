@@ -158,6 +158,8 @@ public class CreateQueries {
 
     processShingles(r, field, queriesOut);
 
+    makeMultiNRQs(random, queriesOut);
+
     makeFuzzyAndRespellQueries(r, field, topTerms, queriesOut);
 
     queriesOut.close();
@@ -173,6 +175,26 @@ public class CreateQueries {
       final int gap = 30000 + random.nextInt(56400);
       final int start = random.nextInt(86400-gap);
       queriesOut.write("IntNRQ: nrq//timesecnum " + start + " " + (start+gap) + "\n");
+    }
+    queriesOut.flush();
+  }
+
+  private static void makeMultiNRQs(Random random, Writer queriesOut) throws IOException {
+    // Multi-field numeric range conjunction queries.
+    // Uses dayOfYear (1-366) and lastMod (epoch millis) fields which are indexed
+    // as NumericDocValuesField.indexedField when addDVSkippers=true.
+    // These produce BooleanQuery with FILTER clauses — the pattern that triggers
+    // multi-field DocValues skip list coordination.
+    for (int idx = 0; idx < NUM_QUERIES; idx++) {
+      // dayOfYear: random range within 1-366
+      int dayGap = 30 + random.nextInt(150);
+      int dayStart = 1 + random.nextInt(366 - dayGap);
+      // lastMod: random range within ~2001-2012 epoch millis
+      // 978307200000 = 2001-01-01, 1325376000000 = 2012-01-01
+      long modStart = 978307200000L + (long)(random.nextDouble() * (1325376000000L - 978307200000L - 100000000000L));
+      long modGap = 10000000000L + (long)(random.nextDouble() * 90000000000L);
+      queriesOut.write("MultiNRQ: multiNrq//dayOfYear " + dayStart + " " + (dayStart + dayGap)
+          + ";lastMod " + modStart + " " + (modStart + modGap) + "\n");
     }
     queriesOut.flush();
   }

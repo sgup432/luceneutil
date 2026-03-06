@@ -38,6 +38,7 @@ import org.apache.lucene.document.IntField;
 import org.apache.lucene.document.IntPoint;
 import org.apache.lucene.document.KeywordField;
 import org.apache.lucene.document.LongField;
+import org.apache.lucene.document.SortedNumericDocValuesField;
 import org.apache.lucene.facet.DrillDownQuery;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.queries.intervals.IntervalQuery;
@@ -539,6 +540,8 @@ class TaskParser implements Closeable {
           return parseMultiPhrase();
         case "disjunctionMax":
           return parseDisjunctionMax();
+        case "multiNrq":
+          return parseMultiNRQ();
         case "nrq":
           return parseNRQ();
         case "intSet":
@@ -675,6 +678,27 @@ class TaskParser implements Closeable {
       final int start = Integer.parseInt(text.substring(1+spot3, spot4));
       final int end = Integer.parseInt(text.substring(1+spot4));
       return IntPoint.newRangeQuery(nrqFieldName, start, end);
+    }
+
+    Query parseMultiNRQ() {
+      // Format: field1 start1 end1;field2 start2 end2[;field3 start3 end3...]
+      // Builds a BooleanQuery with FILTER clauses for each range
+      String[] parts = text.split(";");
+      if (parts.length < 2) {
+        throw new RuntimeException("multiNrq requires at least 2 field ranges separated by ';': " + text);
+      }
+      BooleanQuery.Builder builder = new BooleanQuery.Builder();
+      for (String part : parts) {
+        String[] tokens = part.trim().split("\\s+");
+        if (tokens.length != 3) {
+          throw new RuntimeException("each multiNrq range must be 'field start end': " + part);
+        }
+        String field = tokens[0];
+        long lower = Long.parseLong(tokens[1]);
+        long upper = Long.parseLong(tokens[2]);
+        builder.add(SortedNumericDocValuesField.newSlowRangeQuery(field, lower, upper), Occur.FILTER);
+      }
+      return builder.build();
     }
 
     Query parseIntSet() {
